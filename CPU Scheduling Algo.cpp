@@ -3,6 +3,7 @@ using namespace std;
 class Process{
     public:
         int Priority;   // priority can be anything like higher the no. higher the priority
+        int start,end;
         int id;
         int Arrival_Time;
         int Burst_Time;
@@ -163,16 +164,57 @@ void performOper_Priority(vector<Process>&arr,int size){
         }
     }
 }
-void performOper_NonPrem(vector<Process>&arr,int size){
-    int startTime=0,i=0;
+void performOper_FCFS(vector<Process>&arr,int size){
+    int startTime=arr[0].Arrival_Time,i=0;
     while(i<arr.size()){
         if(startTime<arr[i].Arrival_Time)startTime=arr[i].Arrival_Time;   // This is Optimization
         if(startTime>=arr[i].Arrival_Time){
+            arr[i].start=startTime;
             startTime+=arr[i].Burst_Time;
+            arr[i].end=startTime;
             arr[i].Comp_Time=startTime;
             arr[i].TA_Time=arr[i].Comp_Time-arr[i].Arrival_Time;
             arr[i].W_Time=arr[i].TA_Time-arr[i].Burst_Time;
             i++;
+        }
+    }
+}
+void performOper_SJF(vector<Process>&sorted,int size,vector<Process>&arr){
+    // first we make a priority queue which priority is burst time at some particular time
+    priority_queue<Process,vector<Process>,function<bool(Process,Process)>>pq([](Process p1,Process p2){
+        return p1.Burst_Time>p2.Burst_Time; // min-heap which have less burst time
+    });
+    pq.push(sorted[0]);
+    int startTime=sorted[0].Arrival_Time,j=1;
+    bool flag=true;
+    while(j!=size || !pq.empty()){
+        if(pq.empty()){
+            pq.push(arr[j]);
+            j++;
+        }
+        Process temp=pq.top();
+        if(startTime<temp.Arrival_Time)startTime=temp.Arrival_Time;
+        if(startTime>=temp.Arrival_Time){
+            pq.pop();
+            arr[temp.id-1].start=startTime;
+            startTime+=temp.Burst_Time;
+            arr[temp.id-1].end=startTime;
+            while(flag){
+                if(j==size){
+                    flag=false;
+                    break;
+                }
+                if(sorted[j].Arrival_Time<=startTime){
+                    pq.push(sorted[j]);
+                    j++;
+                }
+                else{
+                    break;
+                }
+            }
+            arr[temp.id-1].Comp_Time=startTime;
+            arr[temp.id-1].TA_Time=arr[temp.id-1].Comp_Time-arr[temp.id-1].Arrival_Time;
+            arr[temp.id-1].W_Time=arr[temp.id-1].TA_Time-arr[temp.id-1].Burst_Time;
         }
     }
 }
@@ -226,18 +268,47 @@ void PriorityAlgo(vector<Process>&arr){
 void FCFS(vector<Process>&arr){
     input(arr); // First input in Process array
     sort(arr.begin(),arr.end(),comparator);
-    performOper_NonPrem(arr,arr.size());
+    performOper_FCFS(arr,arr.size());
     cout << "\nFCFS Scheduling: \n";
     cout << "ID\tArrival\tBurst\tCompletion\tTurnaround\tWaiting\n";
     for (auto& p : arr) {
         cout << p.id << "\t" << p.Arrival_Time << "\t" << p.Burst_Time << "\t"
              << p.Comp_Time << "\t\t" << p.TA_Time << "\t\t" << p.W_Time << endl;
     }
+    cout<<"\nGant Chart: \n";
+    int startTime=arr[0].start;
+    int i=0;
+    while(i<arr.size()){
+        if(startTime>=arr[i].start){
+            cout<<"| P"<<arr[i].id;
+            startTime=arr[i].end;
+            i++;
+        }
+        else{
+            cout<<"| IDLE";
+            startTime=arr[i].start;
+        }
+    }
+    cout<<"|\n";
+    i=0,startTime=arr[0].start;
+    while(i<arr.size()){
+        if(startTime>=arr[i].start){
+            cout<<arr[i].start<<"   ";
+            startTime=arr[i].end;
+            i++;
+        }
+        else{
+            cout<<startTime<<"     ";
+            startTime=arr[i].start;
+        }
+    }
+    cout<<arr[i-1].end;
 }
 void SJF(vector<Process>&arr){
     input(arr); // First input in Process array
-    sort(arr.begin(),arr.end(),comp);
-    performOper_NonPrem(arr,arr.size());
+    vector<Process>sorted(arr.begin(),arr.end());
+    sort(sorted.begin(),sorted.end(),comp);
+    performOper_SJF(sorted,sorted.size(),arr);
     // Now print all the data
     cout << "\nSJF Scheduling: \n";
     cout << "ID\tArrival\tBurst\tCompletion\tTurnaround\tWaiting\n";
@@ -245,6 +316,38 @@ void SJF(vector<Process>&arr){
         cout << p.id << "\t" << p.Arrival_Time << "\t" << p.Burst_Time << "\t"
              << p.Comp_Time << "\t\t" << p.TA_Time << "\t\t" << p.W_Time << endl;
     }
+     cout << "\nGantt Chart with Idle Time: \n";
+    
+    int startTime = sorted[0].start;
+    
+    // Print the processes in Gantt chart format
+    for (int i = 0; i < sorted.size(); i++) {
+        if (sorted[i].start > startTime) { // Idle time
+            cout << "| IDLE ";
+            startTime = sorted[i].start;
+        }
+        cout << "| P" << sorted[i].id << " ";
+        startTime = sorted[i].end;
+    }
+
+    // Handle idle time after the last process
+    if (startTime < sorted[sorted.size() - 1].end) {
+        cout << "| IDLE ";
+    }
+
+    cout << "|\n";
+
+    // Print the time slots of the Gantt chart
+    startTime = sorted[0].start;
+    for (int i = 0; i < sorted.size(); i++) {
+        if (sorted[i].start > startTime) { // Idle time
+            cout << startTime << "   ";
+            startTime = sorted[i].start;
+        }
+        cout << startTime << "   ";
+        startTime = sorted[i].end;
+    }
+    cout << sorted[sorted.size() - 1].end << endl;
 }
 int main(){
     cout<<"\n\n\n";
